@@ -1,0 +1,79 @@
+name: Deploy CAF Azure Landing Zones with Service Principal
+
+on:
+  push:
+    branches:
+    - main
+  workflow_dispatch:
+
+env:
+  tf_version: 1.5.0
+  workingDir: terraform
+  apply: false
+  rollback: false
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    runs-on: ubuntu-latest
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Format
+    - name: 'Terraform Format'
+      run: terraform -chdir=${{ env.workingDir }} fmt -recursive
+        
+    # Initialize
+    - name: 'Terraform Init'
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: ${{ env.tf_version }}
+        tf_actions_subcommand: 'init'
+        tf_actions_working_dir: ${{ env.workingDir }}
+
+    # Validate
+    - name: 'Terraform Validate'
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: ${{ env.tf_version }}
+        tf_actions_subcommand: 'validate'
+        tf_actions_working_dir: ${{ env.workingDir }}
+    
+    # Plan
+    - name: 'Terraform Plan'
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: ${{ env.tf_version }}
+        tf_actions_subcommand: 'plan'
+        tf_actions_working_dir: ${{ env.workingDir }}
+
+    # Apply
+    - name: Terraform Apply
+      if: ${{ env.apply == 'true' && env.rollback == 'false' }}
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: ${{ env.tf_version }}
+        tf_actions_subcommand: 'apply'
+        tf_actions_working_dir: ${{ env.workingDir }}
+
+    # Apply
+    - name: Terraform Destroy
+      if: ${{ env.apply == 'false' && env.rollback == 'true' }}
+      uses: hashicorp/terraform-github-actions@master
+      with:
+        tf_actions_version: ${{ env.tf_version }}
+        tf_actions_subcommand: 'destroy'
+        tf_actions_working_dir: ${{ env.workingDir }}
