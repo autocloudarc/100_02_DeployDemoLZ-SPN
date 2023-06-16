@@ -1,5 +1,5 @@
 name: Deploy CAF Azure Landing Zones with Service Principal
-
+# task-item: Use repo level scecrets to deploy CAF Azure Landing Zones with Service Principal
 on:
   push:
     branches:
