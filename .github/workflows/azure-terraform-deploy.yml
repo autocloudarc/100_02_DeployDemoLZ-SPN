@@ -1,0 +1,94 @@
+name: Deploy CAF Azure Landing Zones with Service Principal
+on: [workflow_dispatch]
+
+env:
+  authType: interactive # Set to oidc or interactive
+  tfversion: 1.5.0 # Set to desired Terraform version
+  workingdir: terraform # Set to desired working directory
+  planOnly: true # Set to true to plan only, false to deploy
+  rollback: false # Set to true to rollback, false to deploy
+
+# Set default run shell to bash
+defaults:
+  run: 
+    shell: bash
+
+# Set permissions for OIDC JWT token
+permissions:
+      id-token: write
+      contents: read
+
+jobs: 
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    cancel-timeout-minutes: 10
+    continue-on-error: false
+
+    steps:
+    # OIDC login
+    - name: 'Azure OIDC login'
+      if: ${{ env.authType == 'oidc' }}
+      # Set permissions for OIDC JWT token
+      uses: azure/login@v1
+      with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    # Az login
+    - name: 'Az Login'
+      if: ${{ env.authType == 'interactive' }}
+      run: az login
+
+    # Set subscription
+    - name: 'Set subscription'
+      run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    # Checkout repo
+    - name: 'Checkout repo'
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        lfs: true
+        submodules: true
+        persist-credentials: true
+
+    # Setup Terraform
+    - name: 'Setup Terraform'
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.tfversion }}
+        terraform_wrapper: true
+
+    # Check version
+    - name: 'Terraform Version'
+      run: terraform version
+
+    # Format
+    - name: 'Terraform Format'
+      run: terraform fmt -recursive
+
+    # Init
+    - name: 'Terraform Init'
+      run: terraform -chdir=${{ env.workingdir }} init
+
+    # Validate
+    - name: 'Terraform Validate'
+      run: terraform -chdir=${{ env.workingdir }} validate
+    
+    # Plan
+    - name: 'Terraform Plan'
+      run: terraform -chdir=${{ env.workingdir }} plan
+
+    # Deploy
+    - name: 'Terraform Deploy'
+      if: ${{ env.planOnly == 'false' }}
+      run: terraform -chdir=${{ env.workingdir }} apply -auto-approve
+
+    # Rollback
+    - name: 'Terraform Rollback'
+      if: ${{ env.rollback == 'true' }}
+      run: terraform -chdir=${{ env.workingdir }} destroy -auto-approve
+    
+
