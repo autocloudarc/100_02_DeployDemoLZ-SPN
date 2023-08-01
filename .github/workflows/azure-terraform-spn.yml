@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  tf_version: 1.5.2
+  tf_version: 1.5.4
   workingDir: terraform
   apply: true
   rollback: false

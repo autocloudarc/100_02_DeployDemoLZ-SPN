@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.63.0"
+      version = ">= 3.67.0"
     }
   }
 }
@@ -23,7 +23,7 @@ data "azurerm_client_config" "core" {
 
 module "alz" {
   source  = "Azure/caf-enterprise-scale/azurerm"
-  version = "4.0.2" # change this to your desired version, https://www.terraform.io/language/expressions/version-constraints
+  version = "4.1.0" # change this to your desired version, https://www.terraform.io/language/expressions/version-constraints
   default_location = "centralus"
   providers = {
     azurerm              = azurerm
